@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Birthday Museum</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;700;800&display=swap');
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: radial-gradient(circle at 50% 20%, #3a3f77 0%, #23264a 55%, #14162e 100%);
+    font-family: 'Nunito', sans-serif;
+    padding: 24px 12px;
+    overflow-x: hidden;
+  }
+
+  .titlecard {
+    font-family: 'Press Start 2P', monospace;
+    color: #ffe9b8;
+    font-size: 13px;
+    text-align: center;
+    text-shadow: 2px 2px 0 #6b3f1d;
+    letter-spacing: 1px;
+  }
+
+  .frame {
+    position: relative;
+    border-radius: 18px;
+    padding: 10px;
+    background: linear-gradient(160deg, #4b3a2a, #2c2115);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.5), inset 0 0 0 3px #6b4f30;
+  }
+
+  #game {
+    display: block;
+    border-radius: 10px;
+    background: #bfe6f2;
+    image-rendering: pixelated;
+    touch-action: none;
+  }
+
+  .hud {
+    position: absolute;
+    top: 22px;
+    left: 22px;
+    display: flex;
+    gap: 6px;
+    z-index: 6;
+  }
+  .hud .heart {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: rgba(20,15,40,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    opacity: 0.4;
+    filter: grayscale(1);
+    transition: all 0.3s ease;
+  }
+  .hud .heart.got {
+    opacity: 1;
+    filter: grayscale(0);
+    background: rgba(255,233,184,0.9);
+    transform: scale(1.08);
+  }
+
+  .hint {
+    color: #ffe9b8;
+    font-size: 13px;
+    opacity: 0.85;
+    text-align: center;
+    max-width: 440px;
+    line-height: 1.5;
+  }
+
+  .hint b { color: #ffcf6b; }
+
+  .pad {
+    display: none;
+    grid-template-columns: repeat(3, 52px);
+    grid-template-rows: repeat(3, 52px);
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .pad button {
+    border: none;
+    border-radius: 10px;
+    background: #ffe9b8;
+    color: #4b3a2a;
+    font-size: 18px;
+    font-weight: 800;
+    box-shadow: 0 3px 0 #b98a3f;
+  }
+  .pad button:active { transform: translateY(2px); box-shadow: 0 1px 0 #b98a3f; }
+  #padUp { grid-column: 2; grid-row: 1; }
+  #padLeft { grid-column: 1; grid-row: 2; }
+  #padRight { grid-column: 3; grid-row: 2; }
+  #padDown { grid-column: 2; grid-row: 3; }
+
+  @media (hover: none) and (pointer: coarse) {
+    .pad { display: grid; }
+  }
+
+  #popupOverlay {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-14px) scale(0.92);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s cubic-bezier(.34,1.56,.64,1), opacity 0.25s;
+    z-index: 8;
+    width: min(88%, 380px);
+  }
+  #popupOverlay.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+    pointer-events: auto;
+  }
+  #popupCard {
+    background: #fff7e6;
+    border-radius: 14px;
+    padding: 14px 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    text-align: center;
+  }
+  #popupCard .icon { font-size: 26px; margin-bottom: 4px; }
+  #popupCard .title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 12px;
+    color: #d8534a;
+    margin-bottom: 6px;
+  }
+  #popupCard .text { font-size: 13px; color: #6b4f30; line-height: 1.4; }
+  #popupCard .menu {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  #popupCard .menu button {
+    border: none;
+    border-radius: 8px;
+    background: #ffe9b8;
+    color: #6b3f1d;
+    font-weight: 800;
+    font-size: 13px;
+    padding: 8px 10px;
+    box-shadow: 0 2px 0 #b98a3f;
+    cursor: pointer;
+  }
+  #popupCard .menu button:active { transform: translateY(1px); box-shadow: none; }
+
+  #finaleOverlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    pointer-events: none;
+  }
+  #finaleOverlay.show { display: flex; }
+  #finaleCard {
+    background: #fff7e6;
+    border-radius: 16px;
+    padding: 24px 34px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    text-align: center;
+    transform: scale(0.7);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), opacity 0.3s;
+  }
+  #finaleOverlay.show #finaleCard { transform: scale(1); opacity: 1; }
+  #finaleCard .big {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    color: #d8534a;
+    margin-bottom: 8px;
+    line-height: 1.6;
+  }
+  #finaleCard .sub { font-size: 14px; color: #6b4f30; }
+</style>
+</head>
+<body>
+
+<div class="titlecard">the lil birthday museum</div>
+
+<div class="frame">
+  <div class="hud">
+    <div class="heart" id="hudBurrito">🌯</div>
+    <div class="heart" id="hudShawarma">🥙</div>
+    <div class="heart" id="hudPerfume">🌸</div>
+  </div>
+  <canvas id="game" width="640" height="448"></canvas>
+  <div id="popupOverlay">
+    <div id="popupCard">
+      <div class="icon" id="popupIcon">🌯</div>
+      <div class="title" id="popupTitle">TITLE</div>
+      <div class="text" id="popupText">text</div>
+      <div class="menu" id="popupMenu" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="hint">walk around with the <b>arrow keys</b> (or the pad below on mobile) — stop by all three stores, then head to the cake in the back ✨</div>
+
+<div class="pad">
+  <button id="padUp">▲</button>
+  <button id="padLeft">◀</button>
+  <button id="padRight">▶</button>
+  <button id="padDown">▼</button>
+</div>
+
+<div id="finaleOverlay">
+  <div id="finaleCard">
+    <div class="big">here's your gift.<br>happy birthday :b</div>
+    <div class="sub">❤️ hope it's a good one</div>
+  </div>
+</div>
+
+<canvas id="confetti" style="position:fixed;inset:0;pointer-events:none;z-index:9;"></canvas>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const TILE = 32;
+const COLS = 20;
+const ROWS = 14;
+
+const solid = Array.from({length: ROWS}, () => Array(COLS).fill(0));
+for (let x = 0; x < COLS; x++) { solid[0][x] = 1; solid[ROWS-1][x] = 1; }
+for (let y = 0; y < ROWS; y++) { solid[y][0] = 1; solid[y][COLS-1] = 1; }
+
+const shops = [
+  { id: 'burrito', x: 1, y: 1, w: 3, h: 2, color: '#e0a24f', emoji: '🌯', label: 'BURRITO' },
+  { id: 'shawarma', x: 8, y: 1, w: 3, h: 2, color: '#c96a3a', emoji: '🥙', label: 'SHAWARMA' },
+  { id: 'perfume', x: 15, y: 1, w: 3, h: 2, color: '#d88fb0', emoji: '🌸', label: 'PERFUME' },
+];
+
+const furniture = [
+  ...shops.map(s => ({ x: s.x, y: s.y, w: s.w, h: s.h, type: 'shopKiosk', shop: s, solidFlag: true })),
+  { x: 2, y: 5, w: 1, h: 2, type: 'lamp', solidFlag: true },
+  { x: 8, y: 5, w: 4, h: 3, type: 'rug', solidFlag: false },
+  { x: 2, y: 9, w: 1, h: 1, type: 'plant', solidFlag: true },
+  { x: 5, y: 9, w: 1, h: 1, type: 'plant', solidFlag: true },
+  { x: 13, y: 9, w: 1, h: 1, type: 'plant', solidFlag: true },
+  { x: 16, y: 9, w: 1, h: 1, type: 'plant', solidFlag: true },
+  { x: 8, y: 10, w: 4, h: 2, type: 'cake', solidFlag: true },
+];
+
+furniture.forEach(f => {
+  if (!f.solidFlag) return;
+  for (let yy = f.y; yy < f.y + f.h; yy++) {
+    for (let xx = f.x; xx < f.x + f.w; xx++) {
+      if (solid[yy] && solid[yy][xx] !== undefined) solid[yy][xx] = 1;
+    }
+  }
+});
+
+const cake = furniture.find(f => f.type === 'cake');
+
+const player = {
+  tx: 10, ty: 12,
+  px: 10 * TILE, py: 12 * TILE,
+  dir: 'down',
+  moving: false,
+  frame: 0,
+  frameTimer: 0,
+};
+
+const keys = {};
+const shopState = {};
+shops.forEach(s => { shopState[s.id] = { inZone: false, visited: false }; });
+const cakeState = { inZone: false };
+let finaleShown = false;
+let inputLocked = false;
+
+function canWalk(tx, ty) {
+  if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return false;
+  return solid[ty][tx] === 0;
+}
+
+function tryMove(dx, dy, dir) {
+  if (player.moving || inputLocked) return;
+  player.dir = dir;
+  const ntx = player.tx + dx;
+  const nty = player.ty + dy;
+  if (canWalk(ntx, nty)) {
+    player.tx = ntx;
+    player.ty = nty;
+    player.moving = true;
+  }
+}
+
+window.addEventListener('keydown', e => {
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+  keys[e.key] = true;
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+function handleInput() {
+  if (player.moving || inputLocked) return;
+  if (keys['ArrowUp']) tryMove(0, -1, 'up');
+  else if (keys['ArrowDown']) tryMove(0, 1, 'down');
+  else if (keys['ArrowLeft']) tryMove(-1, 0, 'left');
+  else if (keys['ArrowRight']) tryMove(1, 0, 'right');
+}
+
+function bindHold(id, dx, dy, dir) {
+  const el = document.getElementById(id);
+  let interval;
+  const start = () => { tryMove(dx, dy, dir); interval = setInterval(() => tryMove(dx, dy, dir), 180); };
+  const stop = () => clearInterval(interval);
+  el.addEventListener('touchstart', e => { e.preventDefault(); start(); });
+  el.addEventListener('touchend', stop);
+  el.addEventListener('mousedown', start);
+  el.addEventListener('mouseup', stop);
+  el.addEventListener('mouseleave', stop);
+}
+bindHold('padUp', 0, -1, 'up');
+bindHold('padDown', 0, 1, 'down');
+bindHold('padLeft', -1, 0, 'left');
+bindHold('padRight', 1, 0, 'right');
+
+function drawFloor() {
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const light = (x + y) % 2 === 0;
+      ctx.fillStyle = light ? '#f2ead8' : '#e9dfc7';
+      ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+    }
+  }
+  ctx.strokeStyle = '#c9bd9c';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(2, 2, COLS * TILE - 4, ROWS * TILE - 4);
+}
+
+function drawFurniture(f) {
+  const x = f.x * TILE, y = f.y * TILE, w = f.w * TILE, h = f.h * TILE;
+  switch (f.type) {
+    case 'shopKiosk': {
+      const s = f.shop;
+      ctx.fillStyle = s.color;
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      for (let i = 0; i < w; i += 12) ctx.fillRect(x + i, y, 6, 10);
+      ctx.fillStyle = '#3a2a1e';
+      ctx.fillRect(x, y + h - 10, w, 10);
+      ctx.fillStyle = '#fff7e6';
+      ctx.fillRect(x + 6, y + h - 8, w - 12, 6);
+      ctx.font = '22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(s.emoji, x + w / 2, y + h / 2 + 4);
+      ctx.font = 'bold 8px sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(s.label, x + w / 2, y - 4);
+      const visited = shopState[s.id].visited;
+      if (visited) {
+        ctx.font = '12px sans-serif';
+        ctx.fillText('✓', x + w - 8, y + 12);
+      }
+      break;
+    }
+    case 'lamp':
+      ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.moveTo(x+4,y+18); ctx.lineTo(x+w-4,y+18); ctx.lineTo(x+w/2,y+2); ctx.fill();
+      ctx.fillStyle = '#3a2a1e'; ctx.fillRect(x+w/2-2, y+18, 4, h-22);
+      ctx.fillRect(x+6, y+h-6, w-12, 4);
+      break;
+    case 'plant':
+      ctx.fillStyle = '#8a5a3a'; ctx.fillRect(x+8, y+18, 16, 12);
+      ctx.fillStyle = '#3f8f4f';
+      ctx.beginPath(); ctx.arc(x+16, y+10, 12, 0, Math.PI*2); ctx.fill();
+      break;
+    case 'rug':
+      ctx.fillStyle = '#f2c94c'; ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = '#4a6fa5'; ctx.lineWidth = 8;
+      ctx.strokeRect(x+10, y+10, w-20, h-20);
+      break;
+    case 'cake':
+      ctx.fillStyle = '#f7d9c4'; ctx.fillRect(x+w*0.15, y+h*0.55, w*0.7, h*0.35);
+      ctx.fillStyle = '#e0729a'; ctx.fillRect(x+w*0.22, y+h*0.3, w*0.56, h*0.3);
+      ctx.fillStyle = '#fff'; ctx.fillRect(x+w*0.3, y+h*0.15, w*0.4, h*0.2);
+      ['#f2994a','#4fc3e0','#eb5757'].forEach((c,i)=>{
+        ctx.fillStyle = c;
+        ctx.fillRect(x+w*0.32+i*10, y+h*0.05, 3, 12);
+        ctx.beginPath(); ctx.arc(x+w*0.32+i*10+1.5, y+h*0.03, 3, 0, Math.PI*2); ctx.fill();
+      });
+      break;
+  }
+}
+
+function drawPlayer() {
+  const bob = player.moving ? Math.sin(player.frame * Math.PI) * 2 : 0;
+  const x = player.px + TILE/2;
+  const y = player.py + TILE/2 - bob;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.beginPath(); ctx.ellipse(x, player.py + TILE - 4, 11, 4, 0, 0, Math.PI*2); ctx.fill();
+
+  ctx.fillStyle = '#1c2a52';
+  ctx.fillRect(x - 8, y + 2, 6, 10);
+  ctx.fillRect(x + 2, y + 2, 6, 10);
+
+  ctx.fillStyle = '#f4c9a8';
+  ctx.beginPath(); ctx.arc(x, y - 6, 10, 0, Math.PI*2); ctx.fill();
+
+  ctx.fillStyle = '#1c1c1c';
+  ctx.beginPath(); ctx.arc(x, y - 10, 10, Math.PI, 0); ctx.fill();
+  ctx.fillRect(x - 10, y - 10, 20, 6);
+
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(x - 9, y - 2, 18, 12);
+  ctx.fillStyle = '#2a4fa5';
+  ctx.fillRect(x - 9, y - 2, 18, 3);
+  ctx.fillRect(x - 9, y + 4, 18, 3);
+
+  if (player.dir !== 'up') {
+    ctx.fillStyle = '#1c1c1c';
+    ctx.beginPath(); ctx.arc(x - 3, y - 6, 1.4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + 3, y - 6, 1.4, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+function update() {
+  handleInput();
+  if (player.moving) {
+    const targetX = player.tx * TILE;
+    const targetY = player.ty * TILE;
+    const speed = 3.2;
+    player.px += Math.sign(targetX - player.px) * Math.min(Math.abs(targetX - player.px), speed);
+    player.py += Math.sign(targetY - player.py) * Math.min(Math.abs(targetY - player.py), speed);
+    player.frameTimer++;
+    if (player.frameTimer % 6 === 0) player.frame = (player.frame + 1) % 2;
+    if (player.px === targetX && player.py === targetY) {
+      player.moving = false;
+      checkZones();
+    }
+  }
+}
+
+function checkZones() {
+  shops.forEach(s => {
+    const st = shopState[s.id];
+    const zx0 = s.x, zx1 = s.x + s.w - 1, zy = s.y + s.h;
+    const inZone = player.tx >= zx0 && player.tx <= zx1 && player.ty === zy;
+    if (inZone && !st.inZone) {
+      triggerShop(s);
+    }
+    st.inZone = inZone;
+  });
+
+  const czx0 = cake.x, czx1 = cake.x + cake.w - 1, czy = cake.y - 1;
+  const inCakeZone = player.tx >= czx0 && player.tx <= czx1 && player.ty === czy;
+  if (inCakeZone && !cakeState.inZone) {
+    triggerCake();
+  }
+  cakeState.inZone = inCakeZone;
+}
+
+function triggerShop(s) {
+  const st = shopState[s.id];
+  if (s.id === 'burrito') {
+    showMenuPopup();
+    return;
+  }
+  if (!st.visited) {
+    st.visited = true;
+    document.getElementById('hud' + s.id[0].toUpperCase() + s.id.slice(1)).classList.add('got');
+  }
+  if (s.id === 'shawarma') {
+    showMessagePopup('🥙', 'shawarma stop', "here you go — fresh shawarma just for you");
+  } else if (s.id === 'perfume') {
+    showMessagePopup('🌸', 'vanilla perfume', "hey there, my vanilla gurl");
+  }
+}
+
+function triggerCake() {
+  const allVisited = Object.values(shopState).every(s => s.visited);
+  if (!allVisited) {
+    showMessagePopup('🎈', 'not yet!', 'go check out all the stores first');
+    return;
+  }
+  if (finaleShown) return;
+  finaleShown = true;
+  document.getElementById('finaleOverlay').classList.add('show');
+  launchConfetti();
+}
+
+let popupTimer = null;
+function showMessagePopup(icon, title, text) {
+  clearTimeout(popupTimer);
+  document.getElementById('popupMenu').style.display = 'none';
+  document.getElementById('popupIcon').textContent = icon;
+  document.getElementById('popupTitle').textContent = title;
+  document.getElementById('popupText').textContent = text;
+  document.getElementById('popupText').style.display = 'block';
+  document.getElementById('popupOverlay').classList.add('show');
+  popupTimer = setTimeout(() => {
+    document.getElementById('popupOverlay').classList.remove('show');
+  }, 2600);
+}
+
+function hidePopupNow() {
+  clearTimeout(popupTimer);
+  document.getElementById('popupOverlay').classList.remove('show');
+}
+
+const burritoMenu = [
+  { name: 'California burrito', text: "here's your California burrito, enjoy!" },
+  { name: 'Carne asada burrito', text: "here's your carne asada burrito, enjoy!" },
+  { name: 'Quesadilla', text: "here's your quesadilla, enjoy!" },
+];
+
+function showMenuPopup() {
+  clearTimeout(popupTimer);
+  inputLocked = true;
+  document.getElementById('popupIcon').textContent = '🌯';
+  document.getElementById('popupTitle').textContent = 'order up!';
+  document.getElementById('popupText').textContent = 'what would you like?';
+  document.getElementById('popupText').style.display = 'block';
+  const menuEl = document.getElementById('popupMenu');
+  menuEl.innerHTML = '';
+  menuEl.style.display = 'flex';
+  burritoMenu.forEach(item => {
+    const btn = document.createElement('button');
+    btn.textContent = item.name;
+    btn.onclick = () => confirmBurrito(item);
+    menuEl.appendChild(btn);
+  });
+  document.getElementById('popupOverlay').classList.add('show');
+}
+
+function confirmBurrito(item) {
+  document.getElementById('popupMenu').style.display = 'none';
+  document.getElementById('popupTitle').textContent = 'order handed over';
+  document.getElementById('popupText').textContent = item.text;
+  const st = shopState.burrito;
+  if (!st.visited) {
+    st.visited = true;
+    document.getElementById('hudBurrito').classList.add('got');
+  }
+  popupTimer = setTimeout(() => {
+    document.getElementById('popupOverlay').classList.remove('show');
+    inputLocked = false;
+  }, 2200);
+}
+
+document.getElementById('popupOverlay').addEventListener('click', e => {
+  if (document.getElementById('popupMenu').style.display === 'flex') return;
+  hidePopupNow();
+  inputLocked = false;
+});
+
+function render() {
+  drawFloor();
+  const drawOrder = [...furniture].sort((a,b) => (a.y + a.h) - (b.y + b.h));
+  const playerDepth = player.ty + 0.5;
+  let playerDrawn = false;
+  for (const f of drawOrder) {
+    if (!playerDrawn && (f.y + f.h) > playerDepth) {
+      drawPlayer();
+      playerDrawn = true;
+    }
+    drawFurniture(f);
+  }
+  if (!playerDrawn) drawPlayer();
+}
+
+function loop() {
+  update();
+  render();
+  requestAnimationFrame(loop);
+}
+loop();
+
+const cCanvas = document.getElementById('confetti');
+const cCtx = cCanvas.getContext('2d');
+function resizeConfetti() { cCanvas.width = window.innerWidth; cCanvas.height = window.innerHeight; }
+resizeConfetti();
+window.addEventListener('resize', resizeConfetti);
+
+let particles = [];
+function launchConfetti() {
+  const colors = ['#e05252','#4fc3e0','#f2c94c','#3f8f4f','#e0729a'];
+  particles = [];
+  for (let i = 0; i < 140; i++) {
+    particles.push({
+      x: Math.random() * cCanvas.width,
+      y: -20 - Math.random() * cCanvas.height * 0.5,
+      vy: 2 + Math.random() * 3,
+      vx: (Math.random() - 0.5) * 2,
+      size: 4 + Math.random() * 5,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rot: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 0.2,
+    });
+  }
+  animateConfetti();
+}
+function animateConfetti() {
+  cCtx.clearRect(0, 0, cCanvas.width, cCanvas.height);
+  let stillFalling = false;
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+    if (p.y < cCanvas.height + 20) stillFalling = true;
+    cCtx.save();
+    cCtx.translate(p.x, p.y);
+    cCtx.rotate(p.rot);
+    cCtx.fillStyle = p.color;
+    cCtx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+    cCtx.restore();
+  });
+  if (stillFalling) requestAnimationFrame(animateConfetti);
+  else cCtx.clearRect(0, 0, cCanvas.width, cCanvas.height);
+}
+</script>
+</body>
+</html>
